@@ -12,7 +12,15 @@ function Result([string]$status, [string]$message) {
   $result = @{status=$status;message=$message;version=$config.version;log=$config.log;backup=$backup}
   $temp = $config.result + '.tmp'
   $result | ConvertTo-Json | Set-Content -LiteralPath $temp -Encoding UTF8
-  Move-Item -LiteralPath $temp -Destination $config.result -Force
+  if ([IO.File]::Exists($config.result)) { [IO.File]::Delete($config.result) }
+  [IO.File]::Move($temp, $config.result)
+}
+function StartApplication {
+  $start = New-Object Diagnostics.ProcessStartInfo
+  $start.FileName = Join-Path $config.target $config.exe
+  $start.WorkingDirectory = $config.target
+  $start.UseShellExecute = $false
+  [Diagnostics.Process]::Start($start) | Out-Null
 }
 function CopyFile([string]$source, [string]$destination) {
   [IO.Directory]::CreateDirectory([IO.Path]::GetDirectoryName($destination)) | Out-Null
@@ -68,7 +76,7 @@ try {
     CopyFile $file.FullName (Join-Path $config.target $relative)
   }
   Log 'Program files replaced. Starting updated application.'
-  Start-Process -FilePath (Join-Path $config.target $config.exe) -WorkingDirectory $config.target
+  StartApplication
   Result 'installed' 'Update installed.'
 } catch {
   $failure = $_.Exception.Message
@@ -90,7 +98,7 @@ try {
   if ($rollbackErrors.Count -gt 0) { $failure += '; rollback errors: ' + ($rollbackErrors -join '; ') }
   Result $status $failure
   if ($parentStopped) {
-    try { Start-Process -FilePath (Join-Path $config.target $config.exe) -WorkingDirectory $config.target } catch { Log ('Restart failed: ' + $_.Exception.Message) }
+    try { StartApplication } catch { Log ('Restart failed: ' + $_.Exception.Message) }
   }
   exit 1
 }

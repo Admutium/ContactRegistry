@@ -48,8 +48,11 @@ public class $type {
   [IO.File]::WriteAllText($scriptPath,[IO.File]::ReadAllText($installer),(New-Object Text.UTF8Encoding($true)))
   $locked = $null
   if($lockFile) { $locked=[IO.File]::Open((Join-Path $target 'resources\app.asar'),[IO.FileMode]::Open,[IO.FileAccess]::Read,[IO.FileShare]::Read) }
-  $args = '-NoProfile -NonInteractive -ExecutionPolicy Bypass -File "' + $scriptPath + '" -ConfigPath "' + $configPath + '"'
-  $helper = Start-Process powershell.exe -ArgumentList $args -PassThru -WindowStyle Hidden -RedirectStandardError (Join-Path $dir 'stderr.txt') -RedirectStandardOutput (Join-Path $dir 'stdout.txt')
+  $helperArguments = '-NoProfile -NonInteractive -ExecutionPolicy Bypass -File "' + $scriptPath + '" -ConfigPath "' + $configPath + '"'
+  # Redirect targets also use wildcard resolution in Start-Process. Keep harness logs outside the special-path fixture.
+  $stderr = Join-Path $root ($name + '-stderr.txt')
+  $stdout = Join-Path $root ($name + '-stdout.txt')
+  $helper = Start-Process powershell.exe -ArgumentList $helperArguments -PassThru -WindowStyle Hidden -RedirectStandardError $stderr -RedirectStandardOutput $stdout
   try {
     if($invalidArchive) {
       WaitFile $config.result
@@ -72,7 +75,7 @@ public class $type {
     Write-Output "PASS: $name (Unicode, spaces, brackets, apostrophe, readiness, data preservation)"
   } catch {
     $detail = "Scenario $name failed: $($_ | Out-String)"
-    foreach($logFile in @($config.log,(Join-Path $dir 'stderr.txt'),(Join-Path $dir 'stdout.txt'))) {
+    foreach($logFile in @($config.log,$stderr,$stdout)) {
       if(Test-Path -LiteralPath $logFile) { $detail += "`n$logFile`n" + [IO.File]::ReadAllText($logFile) }
     }
     throw $detail
