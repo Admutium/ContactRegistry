@@ -40,6 +40,9 @@ require(process.argv[3]).prepare(options).then(async prepared=>{await prepared.p
 $module = [IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..\src\installer.cjs'))
 $arguments = '"' + $worker + '" "' + $launch + '" "' + $module + '"'
 $parent = Start-Process node.exe -ArgumentList $arguments -PassThru -WindowStyle Hidden -RedirectStandardError (Join-Path $root 'node-stderr.txt') -RedirectStandardOutput (Join-Path $root 'node-stdout.txt')
+# Start-Process returns a lazy Process object; retain its handle before it exits
+# so .NET can retrieve the actual exit code instead of a missing value.
+$null = $parent.Handle
 try {
   $deadline=(Get-Date).AddSeconds(45)
   $resultFile=Join-Path $work 'result.json'
@@ -52,7 +55,7 @@ try {
   $result=Get-Content -LiteralPath $resultFile -Raw -Encoding UTF8 | ConvertFrom-Json
   if($result.status -ne 'installed'){throw ($result | ConvertTo-Json)}
   $parent.WaitForExit(5000) | Out-Null
-  if(!$parent.HasExited -or $parent.ExitCode -ne 0){throw 'Parent did not exit cleanly after readiness.'}
+  if(!$parent.HasExited -or $parent.ExitCode -ne 0){throw ("Parent did not exit cleanly after readiness: exited=$($parent.HasExited), code=$($parent.ExitCode)")}
   if([IO.File]::ReadAllText($data) -ne 'CONTACTS PRESERVED'){throw 'Contact database changed.'}
   Write-Output 'PASS: actual Node parent exits; PowerShell survives, installs and starts new application; contacts preserved.'
 } catch {
