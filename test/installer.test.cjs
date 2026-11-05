@@ -33,3 +33,7 @@ test('Windows launches the real helper with Unicode config, inherited log handle
 test('Windows malformed archive fails preparation without authorizing shutdown',{skip:process.platform!=='win32'},async t=>{
   const f=await windowsFixture(t);await fs.writeFile(f.archive,'not a zip');await assert.rejects(()=>prepare(f),/Не удалось подготовить|кодом/);assert.equal(await fs.readFile(path.join(f.target,f.exe),'utf8'),'old');await assert.rejects(()=>fs.access(path.join(f.directory,'ready')),{code:'ENOENT'});
 });
+
+test('successful bootstrap exit is not readiness; helper must separately acknowledge',async t=>{
+ const f=await fixture(t);f.child.exitCode=0;await assert.rejects(()=>waitForReady({...f,allowExitZero:true,timeout:20}),/не подтвердил/);await fs.writeFile(f.ready,'ready');await waitForReady({...f,allowExitZero:true});
+});
