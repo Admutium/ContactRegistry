@@ -18,6 +18,7 @@ function handle(name,fn) {
     try { return {ok:true,data:await fn(...args)}; } catch(e) { return {ok:false,error:e.message}; }
   });
 }
+function titleBarTheme(theme) { return {color:theme==='dark'?'#20222e':'#ffffff',symbolColor:theme==='dark'?'#eeeef5':'#222339',height:36}; }
 function ps(value) { return "'"+value.replace(/'/g,"''")+"'"; }
 app.whenReady().then(async()=>{
   configFile=path.join(app.getPath('userData'),'settings.json');
@@ -28,7 +29,8 @@ app.whenReady().then(async()=>{
   // Initialization never silently switches away from the selected network database.
   let startupError;
   try { await fs.access(store.file); } catch(e) { if(e.code==='ENOENT' && freshConfig) { try{await store.ensure();await persist(config);}catch(err){startupError=err.message;} } else startupError=e.message; }
-  win=new BrowserWindow({width:1380,height:900,minWidth:980,minHeight:680,backgroundColor:'#f5f7fb',autoHideMenuBar:true,title:'Контактная книга',webPreferences:{preload:path.join(__dirname,'preload.cjs'),contextIsolation:true,nodeIntegration:false,sandbox:true}});
+  nativeTheme.themeSource=config.theme;
+  win=new BrowserWindow({...(process.platform==='win32'?{titleBarStyle:'hidden',titleBarOverlay:titleBarTheme(config.theme)}:{}),width:1380,height:900,minWidth:980,minHeight:680,backgroundColor:config.theme==='dark'?'#181a23':'#f6f7fb',autoHideMenuBar:true,title:'Контактная книга',webPreferences:{preload:path.join(__dirname,'preload.cjs'),contextIsolation:true,nodeIntegration:false,sandbox:true}});
   win.webContents.setWindowOpenHandler(()=>({action:'deny'}));
   win.webContents.on('will-navigate',e=>e.preventDefault());
   handle('init',()=>({...config,version:app.getVersion(),platform:process.platform,startupError}));
@@ -38,7 +40,7 @@ app.whenReady().then(async()=>{
   handle('link',(source,target,role)=>store.link(source,target,role));
   handle('unlink',id=>store.unlink(id));
   handle('copy',text=>clipboard.writeText(String(text)));
-  handle('theme',async theme=>{if(!['light','dark'].includes(theme))throw Error('Неверная тема');await persist({...config,theme});nativeTheme.themeSource=theme;});
+  handle('theme',async theme=>{if(!['light','dark'].includes(theme))throw Error('Неверная тема');await persist({...config,theme});nativeTheme.themeSource=theme;win.setBackgroundColor(theme==='dark'?'#181a23':'#f6f7fb');if(process.platform==='win32')win.setTitleBarOverlay(titleBarTheme(theme));});
   handle('autoCheck',async value=>persist({...config,autoCheck:!!value}));
   handle('folder',async()=>{
     const result=await dialog.showOpenDialog(win,{title:'Папка общей базы (локальная или сетевая)',properties:['openDirectory','createDirectory']});

@@ -79,7 +79,7 @@ async function checkUpdate(silent=false){const button=$('#check-update');button.
 $('#check-update').onclick=()=>checkUpdate();
 $('#install-update').onclick=async()=>{const button=$('#install-update');button.disabled=true;$('#update-status').textContent='Подготовка обновления…';try{const installed=await api.installUpdate();if(!installed)$('#update-status').textContent='Установка отменена.';}catch(e){$('#update-status').textContent=e.message;}finally{button.disabled=false;}};
 $('#auto-check').onchange=async e=>{try{await api.autoCheck(e.target.checked);state.config.autoCheck=e.target.checked;}catch(err){e.target.checked=!e.target.checked;toast(err.message,true);}};
-$('#theme-toggle').onclick=async()=>{const theme=document.body.classList.contains('dark')?'light':'dark';try{await api.theme(theme);document.body.classList.toggle('dark',theme==='dark');}catch(e){toast(e.message,true);}};
+$('#theme-toggle').onclick=async()=>{const theme=document.documentElement.classList.contains('dark')?'light':'dark';try{await api.theme(theme);document.documentElement.classList.toggle('dark',theme==='dark');}catch(e){toast(e.message,true);}};
 $$('[data-filter]').forEach(b=>b.onclick=()=>setFilter(b.dataset.filter));
 $$('[data-close]').forEach(b=>b.onclick=()=>document.getElementById(b.dataset.close).close());
 $('#add-contact').onclick=()=>edit();
@@ -88,5 +88,5 @@ $('#search').oninput=e=>{state.search=e.target.value;render();};
 $('#sort').onchange=render;
 $('#clear-filter').onclick=()=>{state.filter='all';state.tag=null;state.search='';$('#search').value='';render();};
 document.addEventListener('keydown',e=>{if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==='k'){e.preventDefault();$('#search').focus();}if((e.ctrlKey||e.metaKey)&&e.key===','){e.preventDefault();if(!document.querySelector('dialog[open]'))settings();}});
-async function start(){try{state.config=await api.init();document.body.classList.toggle('dark',state.config.theme==='dark');$('#storage-label').textContent=state.config.directory;$('#storage-label').title=state.config.directory;await refresh();if(state.config.startupError)toast(state.config.startupError,true);if(state.config.autoCheck)void checkUpdate(true);setInterval(()=>{if(!document.querySelector('dialog[open]')&&document.visibilityState==='visible')void refresh(true);},12000);}catch(e){toast(e.message,true);}}
+async function start(){try{state.config=await api.init();document.documentElement.classList.toggle('platform-win32',state.config.platform==='win32');$('#window-titlebar').hidden=state.config.platform!=='win32';document.documentElement.classList.toggle('dark',state.config.theme==='dark');$('#storage-label').textContent=state.config.directory;$('#storage-label').title=state.config.directory;await refresh();if(state.config.startupError)toast(state.config.startupError,true);if(state.config.autoCheck)void checkUpdate(true);setInterval(()=>{if(!document.querySelector('dialog[open]')&&document.visibilityState==='visible')void refresh(true);},12000);}catch(e){toast(e.message,true);}}
 void start();
