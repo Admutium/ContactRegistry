@@ -1,6 +1,11 @@
 name: Build Windows portable app
 on:
   workflow_dispatch:
+    inputs:
+      publish_release:
+        description: Publish the ZIP and update manifest as a GitHub Release
+        type: boolean
+        default: true
   push:
     tags: ['v*']
 permissions:
@@ -12,6 +17,8 @@ jobs:
       contents: write
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - uses: actions/setup-node@v4
         with:
           node-version: '24'
@@ -24,6 +31,16 @@ jobs:
         run: |
           $version = node -p "require('./package.json').version"
           if ($env:GITHUB_REF_NAME -ne "v$version") { throw 'Tag and package version do not match' }
+      - name: Validate manual release target
+        if: github.event_name == 'workflow_dispatch' && inputs.publish_release
+        shell: pwsh
+        run: |
+          $version = node -p "require('./package.json').version"
+          $tag = "v$version"
+          git rev-parse --verify "refs/tags/$tag"
+          if ($LASTEXITCODE -ne 0) { throw "Create tag $tag before publishing" }
+          git diff --quiet $tag -- src package.json package-lock.json scripts/release-manifest.cjs
+          if ($LASTEXITCODE -ne 0) { throw 'Application sources differ from the release tag' }
       - run: npm run build:win
         env:
           CSC_IDENTITY_AUTO_DISCOVERY: 'false'
@@ -35,9 +52,11 @@ jobs:
             dist/*.zip
             dist/update.json
       - name: Publish release assets
-        if: startsWith(github.ref, 'refs/tags/')
+        if: startsWith(github.ref, 'refs/tags/') || (github.event_name == 'workflow_dispatch' && inputs.publish_release)
         shell: pwsh
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh release create $env:GITHUB_REF_NAME dist/*.zip dist/update.json --verify-tag --generate-notes --title "ContactRegistry $env:GITHUB_REF_NAME"
+          $version = node -p "require('./package.json').version"
+          $tag = "v$version"
+          gh release create $tag dist/*.zip dist/update.json --verify-tag --generate-notes --title "ContactRegistry $tag"
