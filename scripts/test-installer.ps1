@@ -89,6 +89,7 @@ try {
   Scenario 'successful-update' $false $false
   Scenario 'locked-file-rollback' $true $false
   Scenario 'invalid-archive' $false $true
+  & (Join-Path $PSScriptRoot 'test-installer-node.ps1')
 } catch {
   $annotation = ($_ | Out-String).Replace('%','%25').Replace("`r",'%0D').Replace("`n",'%0A')
   [Console]::WriteLine('::error title=Windows installer regression::' + $annotation)
