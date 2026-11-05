@@ -2,7 +2,7 @@ const {app,BrowserWindow,ipcMain,dialog,shell,clipboard,nativeTheme} = require('
 const path=require('node:path');
 const fs=require('node:fs/promises');
 const os=require('node:os');
-const {spawn}=require('node:child_process');
+const installer=require('./installer.cjs');
 const {Store}=require('./store.cjs');
 const updates=require('./update.cjs');
 let win,store,config,configFile,pendingUpdate;
@@ -19,7 +19,6 @@ function handle(name,fn) {
   });
 }
 function titleBarTheme(theme) { return {color:theme==='dark'?'#20222e':'#ffffff',symbolColor:theme==='dark'?'#eeeef5':'#222339',height:36}; }
-function ps(value) { return "'"+value.replace(/'/g,"''")+"'"; }
 app.whenReady().then(async()=>{
   configFile=path.join(app.getPath('userData'),'settings.json');
   await fs.mkdir(path.dirname(configFile),{recursive:true});
@@ -56,6 +55,7 @@ app.whenReady().then(async()=>{
     const result=await dialog.showSaveDialog(win,{title:'Резервная копия базы',defaultPath:`contacts-${new Date().toISOString().replace(/[:.]/g,'-')}.sqlite`,filters:[{name:'SQLite',extensions:['sqlite']}]});
     if(result.canceled)return false;await store.backup(result.filePath);return true;
   });
+  handle('updateLog',async()=>{const file=path.join(app.getPath('userData'),'last-update.log');await fs.access(file);shell.showItemInFolder(file);});
   handle('checkUpdate',async()=>{pendingUpdate=await updates.check(app.getVersion());return pendingUpdate;});
   handle('installUpdate',async()=>{
     if(!pendingUpdate)throw Error('Сначала проверьте обновления.');
@@ -65,12 +65,24 @@ app.whenReady().then(async()=>{
     const directory=await fs.mkdtemp(path.join(os.tmpdir(),'contactregistry-update-'));
     const archive=path.join(directory,'update.zip');await updates.fetchArchive(pendingUpdate,archive);
     const target=path.dirname(app.getPath('exe'));await fs.access(target,require('node:fs').constants.W_OK);
-    const script=path.join(directory,'install.ps1');
-    await fs.writeFile(script,`$ErrorActionPreference = 'Stop'\ntry {\nWait-Process -Id ${process.pid} -ErrorAction SilentlyContinue\nStart-Sleep -Seconds 2\nExpand-Archive -LiteralPath ${ps(archive)} -DestinationPath ${ps(path.join(directory,'unpacked'))}\nif (!(Test-Path -LiteralPath ${ps(path.join(directory,'unpacked','ContactRegistry.exe'))})) { throw 'Invalid update archive' }\nCopy-Item -Path ${ps(path.join(directory,'unpacked','*'))} -Destination ${ps(target)} -Recurse -Force\nStart-Process -FilePath ${ps(app.getPath('exe'))}\n} catch { $_ | Out-File -FilePath ${ps(path.join(directory,'error.txt'))}; Add-Type -AssemblyName PresentationFramework; [System.Windows.MessageBox]::Show('Update failed. Extract the release ZIP manually into the application folder. Your contact database is unchanged.'); }\n`);
-    const child=spawn('powershell.exe',['-NoProfile','-ExecutionPolicy','Bypass','-File',script],{detached:true,stdio:'ignore',windowsHide:true});
-    await new Promise((resolve,reject)=>{child.once('spawn',resolve);child.once('error',reject);});child.unref();app.quit();return true;
+    const prepared=await installer.prepare({directory,archive,target,exe:path.basename(app.getPath('exe')),version:pendingUpdate.version,userData:app.getPath('userData')});
+    await fs.writeFile(path.join(app.getPath('userData'),'pending-update.json'),JSON.stringify({result:prepared.result,log:prepared.log,version:pendingUpdate.version}));
+    await prepared.proceed();
+    app.quit();return true;
   });
   await win.loadFile(path.join(__dirname,'index.html'));
   nativeTheme.themeSource=config.theme;
+  try {
+    const pendingFile=path.join(app.getPath('userData'),'pending-update.json');
+    const pending=JSON.parse(await fs.readFile(pendingFile,'utf8'));
+    if(pending.version===app.getVersion()) { await fs.rm(pendingFile,{force:true}); }
+    else {
+      let result;try{result=JSON.parse((await fs.readFile(pending.result,'utf8')).replace(/^\uFEFF/,''));}catch(e){if(e.code!=='ENOENT')throw e;}
+      if(result && result.status!=='installed') {
+        await dialog.showMessageBox(win,{type:'error',message:'Обновление не установлено',detail:`${result.status==='rolled-back'?'Восстановлена предыдущая версия.':'Установка прервана.'}\n${result.message}\nЖурнал: ${pending.log}`});
+        await fs.rm(pendingFile,{force:true});
+      }
+    }
+  } catch(e) { if(e.code!=='ENOENT') console.error('Update result:',e.message); }
 }).catch(e=>{dialog.showErrorBox('Ошибка запуска',e.message);app.quit();});
 app.on('window-all-closed',()=>app.quit());
