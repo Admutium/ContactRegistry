@@ -1,8 +1,9 @@
 param([Parameter(Mandatory=$true)][string]$ConfigPath)
 $ErrorActionPreference = 'Stop'
 $config = Get-Content -LiteralPath $ConfigPath -Raw -Encoding UTF8 | ConvertFrom-Json
-$stage = Join-Path $config.directory 'unpacked'
-$backup = Join-Path $config.directory 'backup'
+$stage = [IO.Path]::GetFullPath((Join-Path $config.directory 'unpacked'))
+$backup = [IO.Path]::GetFullPath((Join-Path $config.directory 'backup'))
+$config.target = [IO.Path]::GetFullPath($config.target)
 $touched = New-Object System.Collections.Generic.List[string]
 $parentStopped = $false
 function Log([string]$message) {
