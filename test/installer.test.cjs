@@ -22,7 +22,7 @@ async function windowsFixture(t) {
   return {directory,archive,userData,target,exe:'ContactRegistry.exe',version:'test'};
 }
 test('Windows launches the real helper with Unicode config, inherited log handles and readiness handshake',{skip:process.platform!=='win32'},async t=>{
-  const f=await windowsFixture(t);const prepared=await prepare(f);
+  const f=await windowsFixture(t);const prepared=await prepare(f).catch(async error=>{for(const name of ['last-update.log','last-update-launch.log']){try{console.error(name,await fs.readFile(path.join(f.userData,name),'utf8'));}catch{}}throw error;});
   assert.equal(await fs.readFile(path.join(f.target,f.exe),'utf8'),'old');
   assert.equal((await fs.readFile(path.join(f.directory,'install.ps1'))).subarray(0,3).toString('hex'),'efbbbf');
   await fs.writeFile(path.join(f.directory,'cancel'),'cancel');
