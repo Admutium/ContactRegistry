@@ -84,6 +84,8 @@ try {
   Scenario 'locked-file-rollback' $true $false
   Scenario 'invalid-archive' $false $true
 } catch {
+  $annotation = ($_ | Out-String).Replace('%','%25').Replace("`r",'%0D').Replace("`n",'%0A')
+  [Console]::WriteLine('::error title=Windows installer regression::' + $annotation)
   if($env:GITHUB_STEP_SUMMARY){Add-Content -LiteralPath $env:GITHUB_STEP_SUMMARY -Value ('```text' + "`n" + ($_ | Out-String) + "`n" + '```') -Encoding UTF8}
   throw
 } finally { Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue }
