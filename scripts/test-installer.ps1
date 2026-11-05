@@ -46,7 +46,7 @@ public class $type {
   $locked = $null
   if($lockFile) { $locked=[IO.File]::Open((Join-Path $target 'resources\app.asar'),[IO.FileMode]::Open,[IO.FileAccess]::Read,[IO.FileShare]::Read) }
   $args = '-NoProfile -NonInteractive -ExecutionPolicy Bypass -File "' + $scriptPath + '" -ConfigPath "' + $configPath + '"'
-  $helper = Start-Process powershell.exe -ArgumentList $args -PassThru -WindowStyle Hidden
+  $helper = Start-Process powershell.exe -ArgumentList $args -PassThru -WindowStyle Hidden -RedirectStandardError (Join-Path $dir 'stderr.txt') -RedirectStandardOutput (Join-Path $dir 'stdout.txt')
   try {
     if($invalidArchive) {
       WaitFile $config.result
@@ -67,6 +67,12 @@ public class $type {
     if(!$invalidArchive) { Assert ([IO.File]::ReadAllText($marker) -eq $(if($lockFile){'old'}else{'new'})) 'Wrong application restarted' }
     Assert ([IO.File]::ReadAllText($data) -eq 'CONTACTS MUST REMAIN UNCHANGED') 'User data changed'
     Write-Output "PASS: $name (Unicode, spaces, brackets, apostrophe, readiness, data preservation)"
+  } catch {
+    $detail = "Scenario $name failed: $($_ | Out-String)"
+    foreach($logFile in @($config.log,(Join-Path $dir 'stderr.txt'),(Join-Path $dir 'stdout.txt'))) {
+      if(Test-Path -LiteralPath $logFile) { $detail += "`n$logFile`n" + [IO.File]::ReadAllText($logFile) }
+    }
+    throw $detail
   } finally {
     if($locked){$locked.Dispose()}
     if(!$parent.HasExited){Stop-Process -Id $parent.Id -ErrorAction SilentlyContinue}
@@ -77,4 +83,7 @@ try {
   Scenario 'successful-update' $false $false
   Scenario 'locked-file-rollback' $true $false
   Scenario 'invalid-archive' $false $true
+} catch {
+  if($env:GITHUB_STEP_SUMMARY){Add-Content -LiteralPath $env:GITHUB_STEP_SUMMARY -Value ('```text' + "`n" + ($_ | Out-String) + "`n" + '```') -Encoding UTF8}
+  throw
 } finally { Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue }
