@@ -28,7 +28,10 @@ public class $type {
   }
 }
 "@
-    Add-Type -TypeDefinition $code -OutputAssembly (Join-Path $destination 'ContactRegistry.exe') -OutputType ConsoleApplication
+    # Add-Type itself interprets brackets as wildcards; compile outside the special-path fixture.
+    $assembly = Join-Path $root ($type + '.exe')
+    Add-Type -TypeDefinition $code -OutputAssembly $assembly -OutputType ConsoleApplication
+    [IO.File]::Move($assembly,(Join-Path $destination 'ContactRegistry.exe'))
     [IO.File]::WriteAllText((Join-Path $destination 'resources\app.asar'),$version)
   }
   $data = Join-Path $target 'ContactRegistryData\contacts.sqlite'
