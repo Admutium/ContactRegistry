@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="ru"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'"><title>Контактная книга</title><link rel="stylesheet" href="style.css"></head>
+<body>
+<div class="app">
+<aside class="sidebar">
+  <div class="brand"><span class="brand-icon">к</span><div>контакты<span>CONTACT REGISTRY</span></div></div>
+  <div class="workspace-label">ВАША КОНТАКТНАЯ КНИГА</div>
+  <nav aria-label="Основная навигация">
+    <button class="nav-item active" data-filter="all"><span class="nav-icon">◈</span>Все контакты <span id="count-all" class="count">0</span></button>
+    <button class="nav-item" data-filter="person"><span class="nav-icon">♙</span>Люди <span id="count-person" class="count">0</span></button>
+    <button class="nav-item" data-filter="organization"><span class="nav-icon">▦</span>Организации <span id="count-organization" class="count">0</span></button>
+  </nav>
+  <div class="tag-heading">ТЕГИ <span id="tag-count">0</span></div>
+  <div id="tag-list" class="tag-list"></div>
+  <div class="sidebar-bottom"><div class="storage"><span class="status-dot"></span><div>Локальная база<span id="storage-label">Данные под вашим контролем</span></div></div><button id="settings" class="settings-button"><span>⚙</span> Настройки <span class="key-hint">Ctrl+,</span></button></div>
+</aside>
+<main>
+<header class="topbar"><div class="breadcrumbs">Рабочее пространство <span>/</span> <strong id="breadcrumb">Все контакты</strong></div><div class="header-right"><span id="sync-status" class="sync-status">● Сохранено локально</span><button id="theme-toggle" class="icon-button" title="Переключить тему" aria-label="Переключить тему">◐</button><div class="profile-avatar">Я</div></div></header>
+<section class="content">
+<div class="page-heading"><div><div class="eyebrow">ВСЁ ВАЖНОЕ — РЯДОМ</div><h1 id="page-title">Все контакты<span class="heading-dot">.</span></h1><p id="page-description">Люди, компании и связи между ними.</p></div><button id="add-contact" class="primary"><span>＋</span> Добавить контакт</button></div>
+<div class="stats"><button class="stat-card" data-filter="all"><span class="stat-icon lavender">◈</span><div><span>Всего контактов</span><strong id="stat-all">0</strong></div><span class="stat-detail">В вашей книге ↗</span></button><button class="stat-card" data-filter="person"><span class="stat-icon blue">♙</span><div><span>Люди</span><strong id="stat-person">0</strong></div><span class="stat-detail">Личные и рабочие</span></button><button class="stat-card" data-filter="organization"><span class="stat-icon peach">▦</span><div><span>Организации</span><strong id="stat-organization">0</strong></div><span class="stat-detail">Компании и ИП</span></button></div>
+<div class="contact-panel">
+<div class="toolbar"><label class="search"><span>⌕</span><input id="search" placeholder="Поиск по имени, телефону, ИНН…" aria-label="Поиск контактов"><kbd>Ctrl K</kbd></label><select id="sort" aria-label="Сортировка"><option value="asc">По имени А → Я</option><option value="desc">По имени Я → А</option></select><button id="refresh" class="icon-button" title="Обновить из базы" aria-label="Обновить список">↻</button></div>
+<div class="list-meta"><span id="results-count">0 контактов</span><button id="clear-filter" class="text-button" hidden>Сбросить фильтры ×</button><span class="privacy-note">Только на вашем диске</span></div>
+<div class="split-view"><section id="contact-list" class="contact-list" aria-label="Контакты"></section><section id="detail" class="detail" aria-label="Карточка контакта"></section></div>
+</div>
+<footer><span>Меньше поиска. Больше полезных связей.</span><span id="footer-status">Contact Registry</span></footer>
+</section>
+</main>
+</div>
+<dialog id="editor"><form id="contact-form"><div class="modal-heading"><div><div class="eyebrow">КОНТАКТНАЯ КНИГА</div><h2 id="editor-title">Новый контакт</h2></div><button type="button" class="icon-button" data-close="editor" aria-label="Закрыть">×</button></div><div class="kind-switch"><label><input type="radio" name="kind" value="person" checked> Человек</label><label><input type="radio" name="kind" value="organization"> Организация / ИП</label></div><div id="form-fields" class="form-grid"></div><p id="duplicate-warning" class="warning" hidden></p><p id="form-error" class="error" role="alert"></p><div class="modal-footer"><button type="button" class="secondary" data-close="editor">Отмена</button><button type="submit" class="primary" id="save-contact">Сохранить контакт</button></div></form></dialog>
+<dialog id="link-dialog"><form id="link-form"><div class="modal-heading"><h2>Добавить связь</h2><button type="button" class="icon-button" data-close="link-dialog" aria-label="Закрыть">×</button></div><p class="muted">Свяжите человека с организацией или другим контактом.</p><label class="field">Контакт<select id="link-target" required></select></label><label class="field">Роль или описание связи<input id="link-role" placeholder="Например: менеджер, партнёр, помощник" maxlength="200" required></label><p id="link-error" class="error" role="alert"></p><div class="modal-footer"><button type="button" class="secondary" data-close="link-dialog">Отмена</button><button type="submit" class="primary">Добавить связь</button></div></form></dialog>
+<dialog id="settings-dialog"><div class="modal-heading"><div><div class="eyebrow">ВАШЕ РАБОЧЕЕ ПРОСТРАНСТВО</div><h2>Настройки</h2></div><button class="icon-button" data-close="settings-dialog" aria-label="Закрыть">×</button></div><section class="settings-section"><h3>Хранение данных</h3><p>На каждом компьютере выберите одну и ту же папку на сетевом диске. Записи сохраняются по очереди. При потере связи сохранение будет отменено.</p><div id="database-path" class="path"></div><button id="choose-folder" class="secondary">Выбрать папку базы</button><div class="notice">Подключение другой папки не переносит текущие контакты. Чтобы перенести базу, сохраните резервную копию как contacts.sqlite в новой папке, затем подключите её на всех ПК.</div></section><section class="settings-section"><h3>Резервные копии</h3><p>Копия содержит все контакты и связи. Для восстановления подключите папку с нужным файлом contacts.sqlite. Перед заменой базы закройте приложение на всех ПК.</p><button id="backup" class="secondary">Сохранить резервную копию</button></section><section class="settings-section"><h3>Обновления <span id="app-version" class="pill"></span></h3><label class="checkbox-label"><input type="checkbox" id="auto-check"> Проверять при запуске</label><p>Проверка через GitHub Releases. Установка — только с вашим подтверждением.</p><button id="check-update" class="secondary">Проверить обновления</button><button id="install-update" class="primary" hidden>Установить обновление</button><p id="update-status" role="status"></p></section></dialog>
+<dialog id="confirm-dialog"><h2 id="confirm-title">Удалить контакт?</h2><p id="confirm-description"></p><div class="modal-footer"><button class="secondary" id="confirm-cancel">Отмена</button><button class="danger" id="confirm-accept">Удалить</button></div></dialog>
+<div id="toast" class="toast" role="status" hidden></div>
+<script src="renderer.js"></script>
+</body></html>
