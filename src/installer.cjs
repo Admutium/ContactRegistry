@@ -36,7 +36,7 @@ async function prepare({directory,archive,target,exe,version,userData,pid=proces
   const launchLog=path.join(userData,'last-update-launch.log');
   const output=await fs.open(launchLog,'w');
   let child,readiness;
-  try { child=spawn(executable,['-NoProfile','-NonInteractive','-ExecutionPolicy','Bypass','-File',script,'-ConfigPath',configFile],{detached:true,stdio:['ignore',output.fd,output.fd],windowsHide:true,cwd:directory});readiness=waitForReady({ready,result,child});readiness.catch(()=>{}); }
+  try { child=spawn(executable,['-NoProfile','-NonInteractive','-ExecutionPolicy','Bypass','-File',script,'-ConfigPath',configFile],{detached:false,stdio:['ignore',output.fd,output.fd],windowsHide:true,cwd:directory});readiness=waitForReady({ready,result,child});readiness.catch(()=>{}); }
   finally { await output.close(); }
   try { await readiness; }
   catch(e) { await fs.writeFile(cancel,'cancel').catch(()=>{}); child.unref(); throw Error(`${e.message}\nЖурнал: ${log}\nВывод PowerShell: ${launchLog}`); }
